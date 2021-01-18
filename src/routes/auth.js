@@ -12,8 +12,6 @@ router.post("/create", (req, res) => {
     jwt.sign(req.body, secretKey, async (error, token) => {
       if (error) throw new Error(error);
 
-      console.log(events);
-
       const user = new User({
         username: req.body.username,
         password: req.body.password,
@@ -47,26 +45,41 @@ router.post("/create", (req, res) => {
 });
 
 //GET login user
-// router.get('/login', async (req, res) => {
-//     try {
-//         const isExist = !!(await User.find({ email: req.query.email, password: req.query.password })).length;
+router.get("/login", async (req, res) => {
+  try {
+    const isExist = !!(
+      await User.find({
+        username: req.query.username,
+        password: req.query.password,
+      })
+    ).length;
 
-//         if (!isExist) throw new Error('There was an error. We have tried to find you but did not succeed');
+    if (!isExist)
+      throw new Error(
+        "There was an error. We have tried to find you but did not succeed"
+      );
 
-//         jwt.sign(req.query, secretKey, async (err, token) => {
-//             if (err) throw new Error(err)
+    jwt.sign(req.query, secretKey, async (err, token) => {
+      if (err) throw new Error(err);
 
-//             res.send({token, message: {
-//                 primary: 'Login success',
-//                 secondary: `Welcome here ${req.query.email}, now you can upload your own pictures`
-//             }, type: 'success'})
-//         })
-//     } catch (error) {
-//         res.send({message: {
-//             primary: 'There is an error',
-//             secondary: error.toString()
-//         }, type: 'error'})
-//     }
-// })
+      res.send({
+        token,
+        message: {
+          primary: "Login success",
+          secondary: `Welcome here ${req.query.username}`,
+        },
+        type: "success",
+      });
+    });
+  } catch (error) {
+    res.send({
+      message: {
+        primary: "There is an error",
+        secondary: error.toString(),
+      },
+      type: "error",
+    });
+  }
+});
 
 module.exports = router;

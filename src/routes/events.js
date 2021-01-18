@@ -1,100 +1,37 @@
-const express = require('express');
-const User = require('../models/user');
-const jwt = require('jsonwebtoken');
-const verifyToken = require('../verify')
-const secretKey = process.env.SECRET_KEY
+const express = require("express");
+const User = require("../models/user");
+const jwt = require("jsonwebtoken");
+const verifyToken = require("../verify");
+const secretKey = process.env.SECRET_KEY;
+const fs = require("fs");
 
 const router = express.Router();
 
-//Post add 
-router.post('/add', verifyToken, upload.array('productImage', 10), async (req, res) => {
-    try {
-          const token = req.headers.authorization.split('"').join('');
-          const user = jwt.verify(token, secretKey)
-          
-          const imagesPromise = req.files.map(async (item) => {
-          const colors = await parser.getCountOfColors(item.path);
-          const hash = await parser.getHash256(item.path);
-          const isUnique = !(await Image.find({hash: hash })).length;
-  
-          if (!isUnique) throw new Error('Image like this is already exist')
-  
-          const image = new Image({
-            name: req.body.name,
-            dominant: colors.dominant,
-            secondary: colors.secondary,
-            imageUrl: item.path,
-            addedBy: user.email,
-            hash: hash
-          });
-
-          return image
-        })
-
-        const images = await Promise.all(imagesPromise)
-        const savedImages = await Image.insertMany(images);
-
-        res.send({message: {primary: 'Upload Successfully', secondary: `${savedImages[0].name} was successfully uploaded`}, type: 'success'})
-
-        } catch (error) {
-        res.send({message: {primary: `Upload failed`, secondary: error.toString()}, type: 'error'});
-    }
-});
-
-//GET download image by hash 
-router.get('/:imageHash', async (req, res) => {
+//GET events by user
+router.get("/", verifyToken, async (req, res) => {
   try {
-    const image = (await Image.find({hash: req.params.imageHash}))[0]
+    const token = req.headers.authorization.split('"').join("");
+    const user = jwt.verify(token, secretKey);
+    const userWithEvents = (await User.find({ username: user.username }))[0];
 
-    res.download(image.imageUrl)
-  } catch (error) {
-    res.json({message: error})
-  }
-});
-
-//get image with dominant color
-router.get('/', async (req, res) => {
-  const { dominant, secondary} = req.query;
-
-  const secondaryArr = ( typeof secondary != 'undefined' && secondary instanceof Array ) ? secondary : [secondary]
-  const dominantColorName = parser.getNameOfColor(dominant)
-  const secondaryColorsNames = secondaryArr.map((item) => {
-    return parser.getNameOfColor(item)
-  })
-
-  try {
-    if (!!Object.keys(req.query).length) {
-      const image = await Image.find({dominant: dominantColorName, secondary: {$in: secondaryColorsNames}});
-      return res.json(image);
-    } else {
-      const image = await Image.find();
-      return res.json(image);
-    }
+    res.json(userWithEvents.events);
   } catch (error) {
     res.json({ message: error });
   }
 });
 
-//Delete image
-router.delete('/:imageId', async (req, res) => {
+//Update events
+router.patch("/", verifyToken, async (req, res) => {
   try {
-    const image = await Image.remove({ _id: req.params.imageId });
-
-    res.json(image);
-  } catch (error) {
-    res.json({ message: error });
-  }
-});
-
-//Update image
-router.patch('/:imageId', async (req, res) => {
-  try {
-    const image = await Image.updateOne(
-      { _id: req.params.imageId },
-      { $set: { title: req.body.name } }
+    const token = req.headers.authorization.split('"').join("");
+    const user = jwt.verify(token, secretKey);
+    const newEvents = await User.findOneAndUpdate(
+      { username: user.username },
+      { events: req.body.events }
     );
+    const userWithEvents = (await User.find({ username: user.username }))[0];
 
-    res.json(image);
+    res.json(userWithEvents.events);
   } catch (error) {
     res.json({ message: error });
   }
